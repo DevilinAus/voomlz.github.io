@@ -221,7 +221,7 @@ const spellFunctions = {
   28832: handler_bossPartialThreatWipeOnCast(0.5), // Mark of Korth'azz
   29210: handler_bossThreatWipeOnCast, // Noth's blink
   29211: handler_bossThreatWipeOnCast, // Noth's blink new id?
-  28308: handler_hatefulstrike(800), // Patchwerk's hateful strike
+  28308: handler_sod_hatefulStrike(), // Patchwerk's hateful strike
   28339: handler_magneticPull(), // Feungen, exchange tanks
   28338: handler_magneticPull(), // Stalagg, exchange tanks
 
@@ -289,4 +289,57 @@ for (let i in spellFunctions) {
   if (i >= 0 && spellFunctions[i] === handler_zero) {
     zeroThreatSpells.push(i);
   }
+}
+
+const HitType = {
+  Miss: 0,
+  Dodge: 7,
+  Parry: 8,
+  Immune: 10,
+  Resist: 14,
+};
+
+const HATEFUL_BASE_THREAT = 500;
+
+/**
+ * SoD specific handler for hateful strike. Hatefuls hit the #2 and #3 targets within melee range
+ * and adds a fixed 500 threat value to the target.
+ *
+ * TODO: unclear if this threat value is multiplied by the target's threat coefficient.
+ */
+function handler_sod_hatefulStrike() {
+  return (ev, fight) => {
+    if (
+      ev.type !== "damage" ||
+      (ev.hitType > 6 &&
+        ev.hitType !== HitType.Immune &&
+        ev.hitType !== HitType.Resist) ||
+      ev.hitType === HitType.Miss
+    ) {
+      return;
+    }
+
+    let patchwerk = fight.eventToUnit(ev, "source");
+    let target = fight.eventToUnit(ev, "target");
+    if (!patchwerk && !target) return;
+
+    patchwerk.addThreat(
+      target.key,
+      // TODO: does it increase with Naxx difficulty toggles?
+      HATEFUL_BASE_THREAT,
+      ev.timestamp,
+      ev.ability.name,
+      1
+      // TODO: should this be affected by target's threat coefficient?, probably yes
+      // target.threatCoeff(ev.ability)
+    );
+  };
+}
+
+function sortByKey(array, key) {
+  return array.sort(function (a, b) {
+    var x = a[key];
+    var y = b[key];
+    return x < y ? -1 : x > y ? 1 : 0;
+  });
 }
