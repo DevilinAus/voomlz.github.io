@@ -1,4 +1,9 @@
-import { getThreatCoefficient, handler_modDamage } from "../era/base.js";
+import {
+  gearHasTempEnchant,
+  gearSetCount,
+  getThreatCoefficient,
+  handler_modDamage,
+} from "../era/base.js";
 
 export const config = {
   Mods: {
@@ -22,6 +27,7 @@ export const config = {
     SpiritOfTheAlpha: 408696,
     LoyalBeta: 443320,
     TAQ_Tank_4pc: 1213937,
+    ActivateWayOfEarth: 461635, // Utility buff to activate Way of Earth if conditions met
   },
   Spell: {
     EarthShockR1: 8042,
@@ -38,6 +44,10 @@ export const config = {
   Tier: {
     TAQ_Tank: 1852,
   },
+  Enchant: {
+    SouOfTheAlpha: 7683, // TAQ_Tank_4pc
+    RockbiterWeapon: 7568,
+  },
 };
 
 export const initialBuffs = {
@@ -52,6 +62,7 @@ export const buffNames = {
   [config.Buff.LoyalBeta]: "Loyal Beta",
   [config.Buff.WayOfEarth]: "Way of Earth",
   [config.Buff.TAQ_Tank_4pc]: "S03 - Item - TAQ - Shaman - Tank 4P Bonus",
+  [config.Buff.ActivateWayOfEarth]: "Way of Earth (w/ Rockbiter + Shield)",
 };
 
 export const buffMultipliers = {
@@ -64,6 +75,14 @@ export const buffMultipliers = {
     coeff: (buffs, spellId) => {
       if (config.Buff.SpiritOfTheAlpha in buffs) {
         return getThreatCoefficient(config.Mods.TAQ_Tank_4pc);
+      }
+      return getThreatCoefficient(1);
+    },
+  },
+  [config.Buff.WayOfEarth]: {
+    coeff: (buffs, spellId) => {
+      if (config.Buff.ActivateWayOfEarth in buffs) {
+        return getThreatCoefficient(config.Mods.WayOfEarth);
       }
       return getThreatCoefficient(1);
     },
@@ -117,9 +136,22 @@ export const spellFunctions = {
   [config.Spell.MoltenBlast]: handler_modDamage(config.Mods.MoltenBlast),
 };
 
+/**
+ * @param {import("../era/threat/wcl").WCLCombatantInfo} unit
+ * @param {Record<string, boolean>} buffs
+ * @param {Record<string, number>} talents
+ */
 export const combatantImplications = (unit, buffs, talents) => {
-  if (unit.gear.filter((g) => g.setID === config.Tier.TAQ_Tank).length >= 4) {
+  if (
+    gearSetCount(unit.gear, config.Tier.TAQ_Tank) >= 4 ||
+    gearHasTempEnchant(unit.gear, config.Enchant.SouOfTheAlpha)
+  ) {
     buffs[config.Buff.TAQ_Tank_4pc] = true;
+  }
+
+  if (gearHasTempEnchant(unit.gear, config.Enchant.RockbiterWeapon)) {
+    // TODO: shield detection
+    buffs[config.Buff.ActivateWayOfEarth] = true;
   }
 };
 
